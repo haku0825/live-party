@@ -1,0 +1,32 @@
+{% extends "account/base.html" %}
+
+{% block title %}이메일 인증 완료{% endblock %}
+
+{% block content %}
+<div style="max-width:520px; margin:60px auto; padding:40px; background:rgba(28,32,41,.85); border:1px solid rgba(255,255,255,.08); border-radius:14px; text-align:center;">
+
+  <div style="font-size:60px; margin-bottom:20px;">🎉</div>
+  <h2 style="margin:0 0 10px; color:white;">이메일 인증 완료!</h2>
+
+  <p style="color:rgba(255,255,255,.7); margin:0 0 30px; line-height:1.6;">
+    정회원이 되신 것을 환영합니다.<br>
+    이제 자유롭게 파티를 만들고 채팅할 수 있어요.
+  </p>
+
+  <a href="/"
+     style="
+       display:inline-block;
+       width:100%;
+       padding:14px;
+       border-radius:12px;
+       background: var(--brand); /* 보라색 브랜드 컬러 */
+       color: white;
+       font-weight: 800;
+       text-decoration: none;
+       font-size: 16px;
+     ">
+    메인으로 입장하기
+  </a>
+
+</div>
+{% endblock %}

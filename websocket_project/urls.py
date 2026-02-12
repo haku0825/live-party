@@ -23,7 +23,6 @@ urlpatterns = [
     path('', include('core.urls')),
     path('', include('accounts.urls')),
     path('', include('parties.urls')),
-    path('email-confirmation-done/',TemplateView.as_view(template_name="account/email-confirm-done.html"),name = 'account_email_confirmation_done'),
     path('', include("allauth.urls")),
     path('preview-404/', lambda request: render(request, '404.html')),
 ]

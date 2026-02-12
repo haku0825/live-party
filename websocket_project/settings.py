@@ -173,10 +173,13 @@ ACCOUNT_LOGIN_METHODS = {"email", "username"}
 ACCOUNT_SIGNUP_REDIRECT_URL = "/"
 ACCOUNT_LOGOUT_REDIRECT_URL = "/"
 LOGIN_REDIRECT_URL = "/"
+LOGIN_URL = "/login/"
 ACCOUNT_LOGOUT_ON_GET = True
 ACCOUNT_CONFIRM_EMAIL_ON_GET = True
 ACCOUNT_EMAIL_VERIFICATION = "optional"
-ACCOUNT_EMAIL_CONFIRMATION_DONE_URL = "/email-confirmation-done/"
+ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = "/email-confirmation-done/"       
+ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = "/email-confirmation-done/"   
+ACCOUNT_EMAIL_CONFIRMATION_DONE_URL = "/email-confirmation-done/"      # 인증 완료 시 이동
 
 ACCOUNT_FORMS = {
     "signup": "accounts.forms.CustomSignupForm",

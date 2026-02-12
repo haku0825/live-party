@@ -1,5 +1,8 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+from .models import ChatMessage
+from parties.models import Party
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -18,7 +21,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
-        # 연결만 끊고 DB는 건드리지 않음
         await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
@@ -28,6 +30,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         message = data['message']
         nickname = getattr(self.user, 'nickname', self.user.username)
+
+        # ✅ 메시지를 DB에 비동기로 저장
+        await self.save_message(message)
 
         # 일반 채팅 메시지 전송
         await self.channel_layer.group_send(
@@ -40,24 +45,32 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }
         )
 
-    # [핸들러] 일반 채팅
+    # ✅ DB 저장을 위한 헬퍼 함수
+    @database_sync_to_async
+    def save_message(self, message):
+        try:
+            party = Party.objects.get(id=self.room_name)
+            ChatMessage.objects.create(
+                party=party,
+                user=self.user,
+                content=message
+            )
+        except Party.DoesNotExist:
+            pass
+
     async def chat_message(self, event):
         await self.send(text_data=json.dumps(event))
 
-    # [핸들러] 시스템 알림 (입퇴장 등)
     async def system_message(self, event):
-        # sender 없이 message만 보냄 (JS에서 디자인 분리 처리)
         await self.send(text_data=json.dumps({
             'type': 'system_message',
             'message': event['message'],
         }))
 
-    # [핸들러] 파티 종료 알림
     async def party_killed(self, event):
         await self.send(text_data=json.dumps({
             'type': 'party_killed'
         }))
     
-    # [핸들러] 인원수 업데이트
     async def count_update(self, event):
         await self.send(text_data=json.dumps(event))

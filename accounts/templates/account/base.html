@@ -140,14 +140,14 @@
       <div class="nav-inner">
         <a class="brand" href="{% url 'main' %}">
           <span class="logo" aria-hidden="true"></span>
-          <span>Party Match</span>
+          <span>Live Party</span>
           <span class="pill">실시간 매칭</span>
         </a>
 
         <nav class="nav-links">
           <a class="nav-link" href="{% url 'party_list' %}">파티찾기</a>
           <a class="nav-link" href="{% url 'party_create' %}">파티만들기</a>
-          <a class="nav-link" href="#">가이드</a>
+          <a class="nav-link" href="{% url 'guide' %}">가이드</a>
         </nav>
 
         <div class="nav-right">
@@ -172,7 +172,7 @@
 
   <footer class="footer">
     <div class="container">
-      © {{ now|date:"Y" }} Party Match · 친구 구하고 바로 시작하는 실시간 파티 매칭
+      © {{ now|date:"Y" }} Live Party · 친구 구하고 바로 시작하는 실시간 파티 매칭
     </div>
   </footer>
 </body>

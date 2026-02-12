@@ -5,3 +5,7 @@ from django.views import View
 class MainView(View):
     def get(self, request):
         return render(request, 'core/main.html')
+
+class GuideView(View):
+    def get(self, request):
+        return render(request, 'core/guide.html')

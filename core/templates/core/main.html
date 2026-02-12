@@ -3,6 +3,108 @@
 {% block title %}Party Match{% endblock %}
 
 {% block content %}
+<style>
+  /* 팝업 스타일 (메인 페이지 전용) */
+  .popup-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(5px);
+      z-index: 9999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      animation: fadeIn 0.3s ease-out;
+  }
+  
+  .popup-card {
+      background: rgba(30, 33, 40, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 30px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+      position: relative;
+      animation: slideUp 0.3s ease-out;
+  }
+
+  .popup-icon { font-size: 48px; margin-bottom: 16px; }
+  .popup-title { font-size: 22px; margin: 0 0 10px; color: white; font-weight: 800; }
+  .popup-desc { color: rgba(255, 255, 255, 0.7); margin-bottom: 24px; line-height: 1.5; font-size: 15px; }
+  
+  .btn-popup {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: 0.2s;
+      cursor: pointer;
+  }
+  
+  .btn-send {
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      color: white;
+      border: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 10px;
+  }
+  .btn-send:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  
+  .btn-close {
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 14px;
+  }
+  .btn-close:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+
+  /* 닫기(X) 버튼 */
+  .close-icon {
+      position: absolute;
+      top: 15px; right: 15px;
+      color: rgba(255, 255, 255, 0.4);
+      cursor: pointer;
+      font-size: 20px;
+  }
+  .close-icon:hover { color: white; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
+
+{% if user.is_authenticated and not user.emailaddress_set.first.verified %}
+<div id="email-popup" class="popup-overlay">
+    <div class="popup-card">
+        <div class="close-icon" onclick="closePopup()">✕</div>
+        
+        <div class="popup-icon">📧</div>
+        <h2 class="popup-title">이메일 인증이 필요해요</h2>
+        <p class="popup-desc">
+            원활한 파티 매칭과 채팅을 위해<br>
+            이메일 인증을 완료해주세요.
+        </p>
+        
+        <a href="{% url 'resend-email' %}" class="btn-popup btn-send">
+            인증 메일 보내기
+        </a>
+        <button onclick="closePopup()" class="btn-popup btn-close">
+            나중에 하기
+        </button>
+    </div>
+</div>
+
+<script>
+    function closePopup() {
+        const popup = document.getElementById('email-popup');
+        popup.style.opacity = '0';
+        setTimeout(() => { popup.style.display = 'none'; }, 300);
+    }
+</script>
+{% endif %}
+
 <section class="hero">
   <div class="hero-grid">
     <div class="panel">

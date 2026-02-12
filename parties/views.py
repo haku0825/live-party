@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.db import transaction
 from .models import Party, PartyMember
 from .forms import PartyForm
+from chat.models import ChatMessage  # 채팅 메시지 모델 임포트
 
 # 1. 파티 목록
 class PartyListView(ListView):
@@ -30,28 +31,28 @@ class PartyCreateView(LoginRequiredMixin, CreateView):
             return self.form_invalid(form)
 
         with transaction.atomic():
+            # 유저 정보 할당 및 저장
             form.instance.host = user
             self.object = form.save()
+            
+            # 방장을 멤버로 자동 등록 (이때 current_member_count 1로 시작)
             PartyMember.objects.create(party=self.object, user=user, is_active=True)
 
-        return super().form_valid(form)
+        # ✅ 여기서 바로 상세 페이지로 날려줘야 500 에러가 안 납니다!
+        return redirect('party_detail', pk=self.object.pk)
 
-    def get_success_url(self):
-        return reverse_lazy('party_detail', kwargs={'pk': self.object.pk})
 
-# 3. 파티 상세 (입장 처리 포함)
-class PartyDetailView(DetailView):
+# 3. 파티 상세 (입장 처리 및 채팅 내역 불러오기)
+class PartyDetailView(DetailView, LoginRequiredMixin):
     model = Party
     template_name = 'parties/party_detail.html'
 
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
         
-        # [자동 부활] 로그인 유저가 과거 멤버였다면 상태를 True로 복구
         if request.user.is_authenticated:
             member = PartyMember.objects.filter(party=self.object, user=request.user).first()
             if member and not member.is_active:
-                # 단, 파티가 종료되지 않았을 때만 부활
                 if self.object.status != Party.Status.CLOSED:
                     member.is_active = True
                     member.save()
@@ -62,10 +63,13 @@ class PartyDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
+        party = self.object
+
         if user.is_authenticated:
-            context['is_member'] = self.object.members.filter(user=user, is_active=True).exists()
-            # ✅ [추가] 현재 접속자가 방장인지 여부 전달
-            context['is_host'] = (self.object.host == user)
+            context['is_member'] = party.members.filter(user=user, is_active=True).exists()
+            context['is_host'] = (party.host == user)
+            # ✅ 과거 채팅 내역 50개를 시간순으로 가져오기
+            context['chat_messages'] = party.messages.select_related('user').order_by('created_at')[:50]
         else:
             context['is_member'] = False
             context['is_host'] = False
@@ -88,17 +92,15 @@ class PartyJoinView(LoginRequiredMixin, View):
         
         return redirect('party_detail', pk=pk)
 
-# 5. 파티 나가기 (소프트 딜리트)
+# 5. 파티 나가기
 class PartyLeaveView(LoginRequiredMixin, View):
     def post(self, request, pk):
         party = get_object_or_404(Party, pk=pk)
         
         if party.host == request.user:
-            # 호스트 -> 파티 종료 (여기서 리다이렉트 되므로 JS 알림 불필요)
             party.status = Party.Status.CLOSED
             party.save()
         else:
-            # 멤버 -> 비활성화 (기록 남김)
             membership = PartyMember.objects.filter(party=party, user=request.user).first()
             if membership:
                 membership.is_active = False

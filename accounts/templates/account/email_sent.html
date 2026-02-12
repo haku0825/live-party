@@ -1,0 +1,26 @@
+{% extends "account/base.html" %}
+
+{% block content %}
+<div style="max-width:520px; margin:80px auto; padding:40px; background:rgba(28,32,41,.9); border:1px solid rgba(255,255,255,.1); border-radius:16px; text-align:center;">
+    <div style="font-size:60px; margin-bottom:20px;">📨</div>
+    
+    <h2 style="margin:0 0 15px; color:white;">인증 메일을 보냈어요!</h2>
+
+    <p style="color:rgba(255,255,255,.7); line-height:1.6; margin-bottom:30px;">
+        가입하신 이메일 주소로 확인 메일을 발송했습니다.<br>
+        메일함에 있는 링크를 클릭하면 정회원이 됩니다.
+    </p>
+
+    <a href="/" style="
+        display:inline-block;
+        padding:12px 30px;
+        background: var(--brand);
+        color: white;
+        font-weight: bold;
+        border-radius: 12px;
+        text-decoration: none;
+    ">
+        🏠 메인으로 가기
+    </a>
+</div>
+{% endblock %}

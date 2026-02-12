@@ -3,12 +3,6 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Party(models.Model):
-    class Mode(models.TextChoices):
-        RANK = "RANK", "랭크"
-        NORMAL = "NORMAL", "일반(비랭크)"
-        CUSTOM = "CUSTOM", "내전"
-        ETC = "ETC", "기타"
-
     class Status(models.TextChoices):
         OPEN = "OPEN", "모집중"
         FULL = "FULL", "마감"
@@ -17,9 +11,9 @@ class Party(models.Model):
     host = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="hosted_parties")
     # Game 모델이 accounts 앱에 있다면 문자열로 참조해야 순환참조가 안 생깁니다.
     game = models.ForeignKey("accounts.Game", on_delete=models.PROTECT, related_name="parties")
+    mic_required = models.BooleanField(default=False, verbose_name="마이크 필수")
     
-    mode = models.CharField(max_length=20, choices=Mode.choices, default=Mode.NORMAL)
-    title = models.CharField(max_length=100)
+    mode = models.CharField(max_length=50, help_text="게임 모드 예: 랭크, 일반, 칼바람, 신속, 내전")
     description = models.TextField(blank=True)
     
     max_members = models.PositiveIntegerField(
@@ -27,8 +21,7 @@ class Party(models.Model):
         validators=[MinValueValidator(2), MaxValueValidator(20)],
         verbose_name="최대 인원"
     )
-    current_member_count = models.PositiveIntegerField(default=0)
-    
+    current_member_count = models.PositiveIntegerField(default=1)    
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.OPEN)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -36,8 +29,7 @@ class Party(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"[{self.game.name}] {self.title}"
-
+        return f"[{self.game.name}] {self.mode} - {self.host.nickname|default:self.host.username}"  
 
 class PartyMember(models.Model):
     party = models.ForeignKey(Party, on_delete=models.CASCADE, related_name="members")
