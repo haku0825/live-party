@@ -39,13 +39,12 @@ def handle_member_change(sender, instance, created, **kwargs):
         message = f"📢 {user_name}님이 다시 돌아왔습니다."
 
     if message:
-        # ✅ consumer의 system_message 핸들러로 보냄
         async_to_sync(channel_layer.group_send)(
             f"chat_{party.id}",
             {
                 "type": "system_message", 
                 "message": message,
-                "sender": "시스템" # 알림의 주체 명시
+                "sender": "시스템"
             }
         )
 
@@ -64,9 +63,9 @@ def broadcast_party_update(sender, instance, created, **kwargs):
 
     data = {
         "id": instance.id,
-        "title": instance.title,
+        "title": instance.mode,  # ✅ instance.title에서 instance.mode로 수정 완료
         "game": instance.game.name,
-        "host": instance.host.nickname,
+        "host": instance.host.nickname if instance.host.nickname else instance.host.username,
         "current_count": instance.current_member_count,
         "max_members": instance.max_members,
         "status": instance.get_status_display(),

@@ -77,3 +77,56 @@ class CustomSignupForm(SignupForm):
         user.main_games.set(self.cleaned_data["main_games"])
         
         return user
+
+class ProfileUpdateForm(forms.ModelForm):
+    class Meta:
+        model = User
+        # ✅ 수정할 필드만 쏙 뽑았습니다. (생년월일, 성별 제외)
+        fields = ['nickname', 'mic_enabled', 'main_games']
+        
+        labels = {
+            'nickname': '닉네임',
+            'mic_enabled': '마이크 사용 여부',
+            'main_games': '주로 하는 게임 (다중 선택)',
+        }
+        
+        widgets = {
+            'nickname': forms.TextInput(attrs={
+                'class': 'podo-input', # 기존 스타일 재사용
+                'placeholder': '변경할 닉네임을 입력하세요',
+                'style': 'width: 100%; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white;'
+            }),
+            # 마이크 토글은 템플릿에서 디자인할 거라 기본 체크박스로 둡니다.
+            'mic_enabled': forms.CheckboxInput(attrs={
+                'id': 'mic_toggle', 
+                'class': 'mic-checkbox-input' 
+            }),
+            'main_games': forms.CheckboxSelectMultiple(),
+        }
+
+    # 🛡️ 닉네임 중복 검사 (내 현재 닉네임은 제외)
+    def clean_nickname(self):
+        nickname = self.cleaned_data.get('nickname')
+        
+        # 나(self.instance)를 제외하고, 같은 닉네임을 쓰는 사람이 있는지 확인
+        if User.objects.filter(nickname=nickname).exclude(pk=self.instance.pk).exists():
+            raise ValidationError("이미 사용 중인 닉네임입니다. 다른 걸 써주세요!")
+            
+        return nickname
+
+class EmailChangeForm(forms.Form):
+    email = forms.EmailField(
+        label="새로운 이메일",
+        required=True,
+        widget=forms.EmailInput(attrs={
+            'placeholder': '변경할 이메일 주소를 입력하세요',
+            'style': 'width: 100%; padding: 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white;'
+        })
+    )
+
+    def clean_email(self):
+        email = self.cleaned_data['email']
+        # 이미 가입된 이메일인지 확인 (allauth 모델 사용)
+        if EmailAddress.objects.filter(email=email).exists():
+            raise forms.ValidationError("이미 등록된 이메일입니다. 다른 이메일을 사용해주세요.")
+        return email

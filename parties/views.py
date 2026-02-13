@@ -1,6 +1,7 @@
 from django.views.generic import ListView, CreateView, DetailView, View
 from django.urls import reverse_lazy
 from django.contrib.auth.mixins import LoginRequiredMixin
+from accounts.mixins import VerifiedEmailRequiredMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.db import transaction
 from .models import Party, PartyMember
@@ -8,7 +9,7 @@ from .forms import PartyForm
 from chat.models import ChatMessage  # 채팅 메시지 모델 임포트
 
 # 1. 파티 목록
-class PartyListView(ListView):
+class PartyListView(LoginRequiredMixin,ListView):
     model = Party
     template_name = 'parties/party_list.html'
     context_object_name = 'parties'
@@ -17,7 +18,7 @@ class PartyListView(ListView):
         return Party.objects.exclude(status=Party.Status.CLOSED).order_by('-created_at')
 
 # 2. 파티 생성
-class PartyCreateView(LoginRequiredMixin, CreateView):
+class PartyCreateView(LoginRequiredMixin, VerifiedEmailRequiredMixin, CreateView):
     model = Party
     form_class = PartyForm
     template_name = 'parties/party_create.html'
@@ -43,7 +44,7 @@ class PartyCreateView(LoginRequiredMixin, CreateView):
 
 
 # 3. 파티 상세 (입장 처리 및 채팅 내역 불러오기)
-class PartyDetailView(DetailView, LoginRequiredMixin):
+class PartyDetailView(LoginRequiredMixin, VerifiedEmailRequiredMixin, DetailView):
     model = Party
     template_name = 'parties/party_detail.html'
 
@@ -76,7 +77,7 @@ class PartyDetailView(DetailView, LoginRequiredMixin):
         return context
 
 # 4. 파티 참여
-class PartyJoinView(LoginRequiredMixin, View):
+class PartyJoinView(LoginRequiredMixin, VerifiedEmailRequiredMixin, View):
     def post(self, request, pk):
         party = get_object_or_404(Party, pk=pk)
         
@@ -93,7 +94,7 @@ class PartyJoinView(LoginRequiredMixin, View):
         return redirect('party_detail', pk=pk)
 
 # 5. 파티 나가기
-class PartyLeaveView(LoginRequiredMixin, View):
+class PartyLeaveView(LoginRequiredMixin, VerifiedEmailRequiredMixin, View):
     def post(self, request, pk):
         party = get_object_or_404(Party, pk=pk)
         

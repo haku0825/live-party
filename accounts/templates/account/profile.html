@@ -96,16 +96,23 @@
         <div class="profile-info">
             <h1 class="profile-name">
                 {{ user.nickname }}
-                {% if user.mic_enabled %}
-                    <span class="mic-badge mic-on">🎤 마이크 ON</span>
-                {% else %}
-                    <span class="mic-badge mic-off">🔇 마이크 OFF</span>
-                {% endif %}
-            </h1>
+                </h1>
             <span class="profile-username">@{{ user.username }}</span>
         </div>
 
-        <a href="#" class="btn btn-primary">프로필 수정</a>
+        <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+            <a href="{% url 'profile_edit' %}" class="btn btn-primary" style="width: 100%; text-align: center;">
+                ✏️ 프로필 수정
+            </a>
+            <div style="display: flex; gap: 8px;">
+                <a href="{% url 'account_email' %}" class="btn" style="font-size: 13px; padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+                    📧 이메일 수정
+                </a>
+                <a href="{% url 'account_change_password' %}" class="btn" style="font-size: 13px; padding: 8px 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
+                    🔒 비밀번호 수정
+                </a>
+            </div>
+        </div>
     </div>
 
     <div class="grid">
@@ -144,7 +151,7 @@
                     
                     <div>
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                            <span class="game-tag" style="padding: 2px 8px; font-size: 11px; margin: 0;">{{ match.party.game.name }}</span>
+                            <span class="game-tag" style="padding: 2px 8px; font-size: 11px; margin: 0;">게임 : {{ match.party.game.name }} | 모드 : {{ match.party.mode }}</span>
                             <strong style="color: var(--text);">{{ match.party.title }}</strong>
                         </div>
                         <small style="color: var(--muted); font-size: 13px;">{{ match.joined_at|date:"Y.m.d H:i" }} 참여</small>
