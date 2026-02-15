@@ -68,20 +68,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'party_killed'
         }))
+
+    async def user_kicked(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "user_kicked",
+            "kicked_user_id": event["kicked_user_id"],
+            "kicked_user_name": event["kicked_user_name"]
+        }))
     
     async def count_update(self, event):
         await self.send(text_data=json.dumps(event))
 
-    # ============================================================
-    # ✅ [여기부터 추가된 부분] 실시간 멤버 리스트 업데이트 함수
-    # ============================================================
     async def member_list_update(self, event):
         # signals.py에서 보낸 멤버 리스트(event["members"])를
         # 브라우저(HTML/JS)에게 그대로 전달합니다.
         await self.send(text_data=json.dumps({
             "type": "member_list_update",
             "members": event["members"]
-        }))
-    # ============================================================
-    # ✅ [여기까지 추가 끝]
-    # ============================================================
+        }))        

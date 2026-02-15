@@ -28,7 +28,7 @@ class PartyMemberAdmin(admin.ModelAdmin):
     autocomplete_fields = ("party", "user")
 
 @admin.register(BlackList)
-class BlackListAdmin(admin.ModelAdmin):
+class PartyBlacklistAdmin(admin.ModelAdmin):
     list_display = ("id", "party", "user", "created_at")
     search_fields = ("party__mode", "user__username")
     list_filter = ("created_at",)

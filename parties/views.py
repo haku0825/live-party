@@ -4,9 +4,11 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from accounts.mixins import VerifiedEmailRequiredMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.db import transaction
-from .models import Party, PartyMember
+from .models import Party, PartyMember, BlackList
 from .forms import PartyForm
 from chat.models import ChatMessage 
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 # 1. 파티 목록
 class PartyListView(LoginRequiredMixin, ListView):
@@ -122,7 +124,7 @@ class KickMemberView(LoginRequiredMixin, VerifiedEmailRequiredMixin, View):
         partyMember.is_active = False
         partyMember.save()
 
-        PartyBlacklist.objects.get_or_create(party=party, user=partyMember.user)
+        BlackList.objects.get_or_create(party=party, user=partyMember.user)
 
 
         channel_layer = get_channel_layer()
@@ -131,7 +133,7 @@ class KickMemberView(LoginRequiredMixin, VerifiedEmailRequiredMixin, View):
             {
                 "type": "user_kicked",      # Consumer가 처리할 이벤트 이름
                 "kicked_user_id": user_id,  # 강퇴당한 사람 ID
-                "kicked_user_name": target_member.user.nickname # (옵션) 알림용 닉네임
+                "kicked_user_name": partyMember.user.nickname # (옵션) 알림용 닉네임
             }
         )
         

@@ -3,7 +3,7 @@
 
 {% block content %}
 <style>
-    /* --- [1. 레이아웃 & 디자인] --- */
+    /* --- [1. 레이아웃 & 디자인 (기존 유지)] --- */
     :root {
         --chat-bg: #36393f;        /* 채팅 배경 */
         --sidebar-bg: #2f3136;     /* 사이드바 배경 */
@@ -130,7 +130,7 @@
     }
     .send-btn:hover { filter: brightness(1.1); }
 
-    /* 모달 스타일 */
+    /* 모달 스타일 (기존 파티 종료 모달) */
     .modal-overlay {
         display: none;
         position: fixed;
@@ -156,7 +156,7 @@
     .desc-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
     .desc-scroll::-webkit-scrollbar-track { background: transparent; }
 
-    /* ✅ [추가됨] 멤버 리스트 아이템 스타일 */
+    /* 멤버 리스트 아이템 스타일 */
     .member-item {
         display: flex; 
         justify-content: space-between; 
@@ -170,6 +170,51 @@
     .member-item:hover { 
         background: rgba(255,255,255,0.08); 
     }
+
+    /* --- [추가됨] 강퇴 안내 팝업 스타일 (디자인만 얹었습니다!) --- */
+    .kick-modal-overlay {
+        display: none; /* 평소엔 숨김 */
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.85); /* 배경을 더 어둡게 */
+        backdrop-filter: blur(5px); /* 배경 흐림 효과 */
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    .kick-modal-box {
+        background: #36393f; /* 다크 테마 배경 */
+        padding: 40px 30px;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 380px;
+        text-align: center;
+        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 15px 50px rgba(0,0,0,0.7);
+        transform: scale(0.9);
+        animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .kick-btn {
+        width: 100%;
+        padding: 14px;
+        border-radius: 10px;
+        font-weight: 800;
+        cursor: pointer;
+        border: none;
+        font-size: 16px;
+        background: #ed4245; /* 🚨 강렬한 빨간색 (퇴장 의미) */
+        color: white;
+        transition: 0.2s;
+        margin-top: 10px;
+    }
+
+    .kick-btn:hover { background: #c03537; transform: translateY(-2px); }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes popIn { to { transform: scale(0.9); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 </style>
 
 <div class="party-wrapper">
@@ -230,7 +275,10 @@
                 </span>
                 
                 {% if is_host and member.user != party.host %}
-                <button style="background: none; border: none; color: #ed4245; cursor: pointer; font-size: 18px; padding: 0 5px;" title="강퇴하기">×</button>
+                <form action="{% url 'party_kick' party.id member.user.id %}" method="post" style="display:inline;" onsubmit="return confirm('정말 {{ member.user.nickname }}님을 강퇴하시겠습니까?');">
+                    {% csrf_token %}
+                    <button type="submit" style="background: none; border: none; color: #ed4245; cursor: pointer; font-size: 18px; padding: 0 5px;" title="강퇴하기">×</button>
+                </form>
                 {% endif %}
             </div>
             {% empty %}
@@ -305,10 +353,43 @@
     </div>
 </div>
 
+<div id="kick-modal" class="kick-modal-overlay">
+    <div class="kick-modal-box">
+        <div style="font-size: 60px; margin-bottom: 20px;">👋</div>
+        <h3 style="color: white; margin: 0 0 10px; font-size: 24px; font-weight: 800;">연결이 종료되었습니다</h3>
+        <p style="color: #b9bbbe; font-size: 15px; margin-bottom: 30px; line-height: 1.6;">
+            방장에 의해 파티에서 제외되었습니다.<br>
+            다른 파티를 찾아보세요!
+        </p>
+        
+        <button onclick="location.href='{% url 'party_list' %}'" class="kick-btn">
+            목록으로 돌아가기
+        </button>
+    </div>
+</div>
+
 <script>
+    // 0. CSRF 토큰 가져오는 헬퍼 함수
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    // 1. 기본 설정
     const partyId = "{{ party.id }}";
     const currentUserId = "{{ request.user.id }}";
-    const isHost = "{{ is_host|yesno:'true,false' }}" === "true"; // 방장 여부 확인
+    const isHost = "{{ is_host|yesno:'true,false' }}" === "true";
 
     const chatLog = document.querySelector('#chat-log');
     chatLog.scrollTop = chatLog.scrollHeight;
@@ -316,10 +397,11 @@
     const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
     const chatSocket = new WebSocket(protocol + window.location.host + '/ws/chat/' + partyId + '/');
 
+    // 2. 메시지 수신 처리
     chatSocket.onmessage = function(e) {
         const data = JSON.parse(e.data);
 
-        // 1. 채팅 메시지
+        // (A) 일반 채팅 메시지
         if (data.type === 'chat_message') {
             const isMe = (String(data.sender_id) === String(currentUserId));
             const senderName = data.sender || '알 수 없음';
@@ -332,13 +414,13 @@
             chatLog.insertAdjacentHTML('beforeend', msgHTML);
             chatLog.scrollTop = chatLog.scrollHeight;
         } 
-        // 2. 시스템 메시지
+        // (B) 시스템 메시지
         else if (data.type === 'system_message') {
             const sysHTML = `<div class="system-message">${data.message}</div>`;
             chatLog.insertAdjacentHTML('beforeend', sysHTML);
             chatLog.scrollTop = chatLog.scrollHeight;
         }
-        // 3. 인원수 업데이트
+        // (C) 인원수 업데이트
         else if (data.type === 'count_update') {
             const countEl = document.querySelector('#member-count');
             const barEl = document.querySelector('#progress-bar');
@@ -349,23 +431,24 @@
                 barEl.style.width = pct + '%';
             }
         }
-        // ============================================================
-        // ✅ [수정됨] 실시간 멤버 리스트 업데이트 (강퇴 버튼 로직 추가!)
-        // ============================================================
+        // (D) 멤버 리스트 업데이트
         else if (data.type === 'member_list_update') {
             const listContainer = document.getElementById('member-list-container');
             if (listContainer) {
-                listContainer.innerHTML = ''; // 리스트 초기화
+                listContainer.innerHTML = ''; 
 
                 data.members.forEach(member => {
                     const isMe = (String(member.id) === String(currentUserId));
                     
-                    // ✨ [여기가 추가된 핵심] 강퇴 버튼 만들기
-                    // 조건: 내가 방장(isHost)이고, 상대방이 방장이 아닐 때(!member.is_host)
+                    // 강퇴 버튼 HTML (자바스크립트에서 폼 생성)
                     let kickButtonHtml = '';
                     if (isHost && !member.is_host) {
-                        // (주의: onclick 기능은 아직 없습니다. 모양만 나옵니다.)
-                        kickButtonHtml = `<button style="background: none; border: none; color: #ed4245; cursor: pointer; font-size: 18px; padding: 0 5px;" title="강퇴하기">×</button>`;
+                        kickButtonHtml = `
+                            <form action="/parties/${partyId}/members/${member.id}/kick/" method="post" style="display:inline;" onsubmit="return confirm('정말 ${member.nickname}님을 강퇴하시겠습니까?');">
+                                <input type="hidden" name="csrfmiddlewaretoken" value="${csrftoken}">
+                                <button type="submit" style="background: none; border: none; color: #ed4245; cursor: pointer; font-size: 18px; padding: 0 5px;" title="강퇴하기">×</button>
+                            </form>
+                        `;
                     }
 
                     let html = `
@@ -375,15 +458,30 @@
                             ${member.is_host ? '👑' : ''}
                             ${isMe ? '<span style="font-size: 12px; color: #3ba55c; margin-left: 5px;">(나)</span>' : ''}
                         </span>
-                        ${kickButtonHtml} </div>`;
+                        ${kickButtonHtml}
+                    </div>`;
                     
                     listContainer.insertAdjacentHTML('beforeend', html);
                 });
             }
         }
-        // ============================================================
-        
-        // 4. 파티 폭파
+        // ✅ (E) 강퇴 신호 처리 (여기만 수정했습니다!)
+        else if (data.type === 'user_kicked') {
+            // 내가 강퇴당한 경우
+            if (String(data.kicked_user_id) === String(currentUserId)) {
+                // 기존 alert 대신 예쁜 모달 띄우기
+                const modal = document.getElementById('kick-modal');
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden'; // 뒷배경 스크롤 막기
+            } 
+            // 다른 사람이 강퇴당한 경우
+            else {
+                const sysHTML = `<div class="system-message" style="color:#ed4245;">🚫 ${data.kicked_user_name}님이 강제 추방되었습니다.</div>`;
+                chatLog.insertAdjacentHTML('beforeend', sysHTML);
+                chatLog.scrollTop = chatLog.scrollHeight;
+            }
+        }
+        // (F) 파티 해체 처리
         else if (data.type === 'party_killed') {
             if (!isHost) {
                 document.getElementById('party-end-modal').style.display = 'flex';
@@ -393,6 +491,7 @@
 
     chatSocket.onclose = function(e) { console.error('Socket closed'); };
 
+    // 3. 채팅 입력
     const inputDom = document.querySelector('#chat-message-input');
     const submitBtn = document.querySelector('#chat-message-submit');
 
