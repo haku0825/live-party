@@ -308,7 +308,7 @@
 <script>
     const partyId = "{{ party.id }}";
     const currentUserId = "{{ request.user.id }}";
-    const isHost = "{{ is_host|yesno:'true,false' }}" === "true";
+    const isHost = "{{ is_host|yesno:'true,false' }}" === "true"; // 방장 여부 확인
 
     const chatLog = document.querySelector('#chat-log');
     chatLog.scrollTop = chatLog.scrollHeight;
@@ -319,6 +319,7 @@
     chatSocket.onmessage = function(e) {
         const data = JSON.parse(e.data);
 
+        // 1. 채팅 메시지
         if (data.type === 'chat_message') {
             const isMe = (String(data.sender_id) === String(currentUserId));
             const senderName = data.sender || '알 수 없음';
@@ -329,11 +330,15 @@
                 </div>
             `;
             chatLog.insertAdjacentHTML('beforeend', msgHTML);
+            chatLog.scrollTop = chatLog.scrollHeight;
         } 
+        // 2. 시스템 메시지
         else if (data.type === 'system_message') {
             const sysHTML = `<div class="system-message">${data.message}</div>`;
             chatLog.insertAdjacentHTML('beforeend', sysHTML);
+            chatLog.scrollTop = chatLog.scrollHeight;
         }
+        // 3. 인원수 업데이트
         else if (data.type === 'count_update') {
             const countEl = document.querySelector('#member-count');
             const barEl = document.querySelector('#progress-bar');
@@ -344,12 +349,46 @@
                 barEl.style.width = pct + '%';
             }
         }
+        // ============================================================
+        // ✅ [수정됨] 실시간 멤버 리스트 업데이트 (강퇴 버튼 로직 추가!)
+        // ============================================================
+        else if (data.type === 'member_list_update') {
+            const listContainer = document.getElementById('member-list-container');
+            if (listContainer) {
+                listContainer.innerHTML = ''; // 리스트 초기화
+
+                data.members.forEach(member => {
+                    const isMe = (String(member.id) === String(currentUserId));
+                    
+                    // ✨ [여기가 추가된 핵심] 강퇴 버튼 만들기
+                    // 조건: 내가 방장(isHost)이고, 상대방이 방장이 아닐 때(!member.is_host)
+                    let kickButtonHtml = '';
+                    if (isHost && !member.is_host) {
+                        // (주의: onclick 기능은 아직 없습니다. 모양만 나옵니다.)
+                        kickButtonHtml = `<button style="background: none; border: none; color: #ed4245; cursor: pointer; font-size: 18px; padding: 0 5px;" title="강퇴하기">×</button>`;
+                    }
+
+                    let html = `
+                    <div class="member-item">
+                        <span style="color: #dcddde; font-weight: 500;">
+                            ${member.nickname}
+                            ${member.is_host ? '👑' : ''}
+                            ${isMe ? '<span style="font-size: 12px; color: #3ba55c; margin-left: 5px;">(나)</span>' : ''}
+                        </span>
+                        ${kickButtonHtml} </div>`;
+                    
+                    listContainer.insertAdjacentHTML('beforeend', html);
+                });
+            }
+        }
+        // ============================================================
+        
+        // 4. 파티 폭파
         else if (data.type === 'party_killed') {
             if (!isHost) {
                 document.getElementById('party-end-modal').style.display = 'flex';
             }
         }
-        chatLog.scrollTop = chatLog.scrollHeight;
     };
 
     chatSocket.onclose = function(e) { console.error('Socket closed'); };

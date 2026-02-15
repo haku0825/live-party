@@ -3,6 +3,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from allauth.account.forms import SignupForm
 from .models import User, Game
+from allauth.account.models import EmailAddress  # 이메일 중복 검사용
 
 class CustomSignupForm(SignupForm):
     # 1. 입력 필드 정의

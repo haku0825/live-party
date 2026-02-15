@@ -7,4 +7,5 @@ urlpatterns = [
     path('parties/<int:pk>/', views.PartyDetailView.as_view(), name='party_detail'),
     path('parties/<int:pk>/join/', views.PartyJoinView.as_view(), name='party_join'),
     path('parties/<int:pk>/leave/', views.PartyLeaveView.as_view(), name='party_leave'),
+    path('parties/<int:party_id>/members/<int:user_id>/kick/', views.KickMemberView.as_view(), name='party_kick'),
 ]

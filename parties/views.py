@@ -110,3 +110,29 @@ class PartyLeaveView(LoginRequiredMixin, VerifiedEmailRequiredMixin, View):
                 membership.save()
                 
         return redirect('party_list')
+
+class KickMemberView(LoginRequiredMixin, VerifiedEmailRequiredMixin, View):
+    def post(self, request, party_id, user_id):
+        party = get_object_or_404(Party, pk=party_id)
+
+        if party.host != request.user:
+            return redirect('party_detail', pk=party_id)
+
+        partyMember = get_object_or_404(PartyMember, party=party, user_id=user_id)
+        partyMember.is_active = False
+        partyMember.save()
+
+        PartyBlacklist.objects.get_or_create(party=party, user=partyMember.user)
+
+
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"chat_{party.id}",  # 그룹 이름
+            {
+                "type": "user_kicked",      # Consumer가 처리할 이벤트 이름
+                "kicked_user_id": user_id,  # 강퇴당한 사람 ID
+                "kicked_user_name": target_member.user.nickname # (옵션) 알림용 닉네임
+            }
+        )
+        
+        return redirect('party_detail', pk=party_id)
