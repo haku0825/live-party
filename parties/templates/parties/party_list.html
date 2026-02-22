@@ -105,6 +105,7 @@
     border: 1px dashed var(--line);
     border-radius: var(--radius);
     padding: 24px;
+    margin-top: 14px;
   }
 
   .blocked-modal-overlay {
@@ -205,7 +206,7 @@
         </a>
 
         <div class="party-actions">
-          {% if request.user in party.members.all %}
+          {% if party.id in joined_party_ids %}
             <a href="{% url 'party_detail' party.pk %}" class="btn btn-ghost" style="display:block;text-align:center;">참여중 · 입장하기</a>
           {% else %}
             <form action="{% url 'party_join' party.pk %}" method="post">

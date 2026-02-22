@@ -218,7 +218,31 @@ class PartyListView(LoginRequiredMixin, ListView):
     context_object_name = "parties"
 
     def get_queryset(self):
-        return Party.objects.exclude(status=Party.Status.CLOSED).order_by("-created_at")
+        return (
+            Party.objects.exclude(status=Party.Status.CLOSED)
+            .select_related("game", "host")
+            .order_by("-created_at")
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        parties = list(context.get("parties", []))
+        party_ids = [party.id for party in parties]
+        joined_party_ids = set()
+
+        if self.request.user.is_authenticated and party_ids:
+            joined_party_ids = set(
+                PartyMember.objects.filter(
+                    user=self.request.user,
+                    is_active=True,
+                    party_id__in=party_ids,
+                ).values_list("party_id", flat=True)
+            )
+
+        context["parties"] = parties
+        context["joined_party_ids"] = joined_party_ids
+        return context
 
 
 class PartyCreateView(LoginRequiredMixin, VerifiedEmailRequiredMixin, CreateView):

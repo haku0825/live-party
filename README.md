@@ -45,3 +45,15 @@ live-party
 ├── 📂 parties            # 파티 생성/참가 로직, 시그널(Signals)
 ├── 📂 websocket_project  # 설정(Settings), ASGI/WSGI
 └── 📜 manage.py
+```
+
+## ⚙️ Local Run
+1. 로컬 환경 변수 파일 준비
+```bash
+cp .env.example .env.local
+```
+2. `.env.local` 값을 로컬 DB/Redis 정보로 수정
+3. 실행
+```bash
+./run_local.sh
+```

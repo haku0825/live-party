@@ -10,5 +10,8 @@ media/
 venv/
 env/
 .env
+.env.local
+.env.*
+!.env.example
 
 .DS_Store

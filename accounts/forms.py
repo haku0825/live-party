@@ -10,7 +10,12 @@ class CustomSignupForm(SignupForm):
     # allauth 기본 필드에 프로젝트 커스텀 필드를 추가함.
     username = forms.CharField(max_length=150, label="아이디(username)")
     nickname = forms.CharField(max_length=15, label="닉네임")
-    phone = forms.CharField(max_length=15, label="전화번호")
+    phone = forms.CharField(
+        min_length=11,
+        max_length=11,
+        label="전화번호",
+        widget=forms.TextInput(attrs={"inputmode": "numeric", "pattern": r"\d{11}"}),
+    )
     gender = forms.ChoiceField(choices=User.Gender.choices, label="성별")
     
     birth_year = forms.IntegerField(
@@ -56,7 +61,10 @@ class CustomSignupForm(SignupForm):
 
     # 전화번호 중복 여부를 검증함.
     def clean_phone(self):
-        phone = self.cleaned_data['phone']
+        raw_phone = self.cleaned_data['phone']
+        phone = "".join(ch for ch in raw_phone if ch.isdigit())
+        if len(phone) != 11:
+            raise ValidationError("전화번호는 숫자 11자리로 입력해주세요.")
         if User.objects.filter(phone=phone).exists():
             raise ValidationError("이미 가입된 전화번호입니다.")
         return phone

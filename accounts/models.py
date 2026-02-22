@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
 from django.db import models
 
 # 서비스에서 사용하는 게임 목록을 관리하는 모델
@@ -31,8 +32,14 @@ class User(AbstractUser):
     )
 
     phone = models.CharField(
-        max_length=15,
+        max_length=11,
         unique=True,
+        validators=[
+            RegexValidator(
+                regex=r"^\d{11}$",
+                message="전화번호는 숫자 11자리여야 합니다.",
+            )
+        ],
     )
 
     birth_year = models.IntegerField(

@@ -174,11 +174,6 @@
     gap: 8px;
   }
 
-  .mention-filter.active {
-    border-color: rgba(47, 199, 179, 0.45);
-    color: #7bf0e2;
-  }
-
   .pinned-notice {
     margin: 12px 16px 0;
     border: 1px solid rgba(47, 199, 179, 0.35);
@@ -539,7 +534,6 @@
     <header class="chat-head">
       <strong>파티 채팅방</strong>
       <div class="chat-head-right">
-        <button id="mention-filter-toggle" type="button" class="btn btn-ghost mention-filter">멘션만 보기</button>
         <span class="badge" id="message-count">메시지 {{ chat_messages|length }}개</span>
       </div>
     </header>
@@ -656,7 +650,6 @@
   let maxMembers = Number("{{ party.max_members }}");
   let hiddenMessageCount = 0;
   let hiddenMentionCount = 0;
-  let mentionFilterOnly = false;
   let mentionState = null;
   let mentionActiveIndex = -1;
   let mentionCandidates = [];
@@ -666,7 +659,6 @@
   const chatLog = document.getElementById('chat-log');
   const partyActionContainer = document.getElementById('party-action-container');
   const messageCountEl = document.getElementById('message-count');
-  const mentionFilterBtn = document.getElementById('mention-filter-toggle');
   const mentionSuggest = document.getElementById('mention-suggest');
   const requestPanel = document.getElementById('request-panel');
   const requestList = document.getElementById('request-list');
@@ -678,6 +670,11 @@
   const pinnedContentEl = document.getElementById('pinned-content');
   const pinnedMetaEl = document.getElementById('pinned-meta');
   const pinnedClearBtn = document.getElementById('pinned-clear-btn');
+  const supportsDesktopNotification = typeof window !== 'undefined' && ('Notification' in window);
+  let desktopNotificationPermission = supportsDesktopNotification ? Notification.permission : 'denied';
+  let mentionAudioContext = null;
+  let mentionAudioEnabled = false;
+  let mentionNotifyInitialized = false;
 
   function isImeComposing(e) {
     return isTextComposing || (e && (e.isComposing || e.keyCode === 229));
@@ -756,19 +753,83 @@
     document.title = defaultTitle;
   }
 
-  function applyMentionFilter() {
-    const rows = chatLog.querySelectorAll('.message-row');
-    rows.forEach(row => {
-      if (!mentionFilterOnly) {
-        row.style.display = '';
-        return;
-      }
-      row.style.display = row.classList.contains('mention-me') ? '' : 'none';
-    });
-    if (mentionFilterBtn) {
-      mentionFilterBtn.classList.toggle('active', mentionFilterOnly);
-      mentionFilterBtn.textContent = mentionFilterOnly ? '멘션만 보는 중' : '멘션만 보기';
+  function ensureMentionAudioReady() {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+
+    if (!mentionAudioContext) {
+      mentionAudioContext = new AudioCtx();
     }
+    if (mentionAudioContext.state === 'running') {
+      mentionAudioEnabled = true;
+      return;
+    }
+
+    mentionAudioContext.resume().then(() => {
+      mentionAudioEnabled = true;
+    }).catch(() => {});
+  }
+
+  function requestDesktopPermission() {
+    if (!supportsDesktopNotification || desktopNotificationPermission !== 'default') return;
+    Notification.requestPermission()
+      .then((permission) => {
+        desktopNotificationPermission = permission;
+      })
+      .catch(() => {});
+  }
+
+  function initMentionNotifications() {
+    if (mentionNotifyInitialized) return;
+    mentionNotifyInitialized = true;
+
+    const unlock = () => {
+      ensureMentionAudioReady();
+      requestDesktopPermission();
+      if (mentionAudioEnabled || desktopNotificationPermission !== 'default') {
+        document.removeEventListener('pointerdown', unlock);
+        document.removeEventListener('keydown', unlock);
+      }
+    };
+
+    document.addEventListener('pointerdown', unlock, { passive: true });
+    document.addEventListener('keydown', unlock);
+  }
+
+  function playMentionTone() {
+    if (!mentionAudioContext || !mentionAudioEnabled) return;
+
+    const now = mentionAudioContext.currentTime;
+    const scheduleTone = (frequency, offset) => {
+      const osc = mentionAudioContext.createOscillator();
+      const gain = mentionAudioContext.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.0001, now + offset);
+      gain.gain.exponentialRampToValueAtTime(0.09, now + offset + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.12);
+      osc.connect(gain);
+      gain.connect(mentionAudioContext.destination);
+      osc.start(now + offset);
+      osc.stop(now + offset + 0.13);
+    };
+
+    scheduleTone(880, 0);
+    scheduleTone(1046, 0.15);
+  }
+
+  function notifyMention(sender, message) {
+    playMentionTone();
+
+    if (!document.hidden) return;
+    if (!supportsDesktopNotification || desktopNotificationPermission !== 'granted') return;
+
+    try {
+      new Notification(`멘션 알림 · ${sender || '알 수 없음'}`, {
+        body: String(message || '').slice(0, 90),
+        tag: `party-mention-${partyId}`,
+      });
+    } catch (_) {}
   }
 
   function decorateExistingMentions() {
@@ -778,7 +839,6 @@
         row.classList.add('mention-me');
       }
     });
-    applyMentionFilter();
   }
 
   function appendChatMessage({ messageId, sender, senderId, message, mentionUserIds }) {
@@ -827,8 +887,11 @@
       updateHiddenTitle();
     }
 
+    if (mentionForMe && String(senderId) !== String(currentUserId)) {
+      notifyMention(sender, message || '');
+    }
+
     updateMessageCount();
-    applyMentionFilter();
   }
 
   document.addEventListener('visibilitychange', () => {
@@ -1296,13 +1359,6 @@
   const nextQuery = params.toString();
   history.replaceState({}, '', `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`);
 
-  if (mentionFilterBtn) {
-    mentionFilterBtn.addEventListener('click', () => {
-      mentionFilterOnly = !mentionFilterOnly;
-      applyMentionFilter();
-    });
-  }
-
   chatLog.scrollTop = chatLog.scrollHeight;
   updateMessageCount();
   updateRequestPanelVisibility();
@@ -1319,6 +1375,7 @@
   );
   decorateExistingMentions();
   syncPinButtonsForHost();
+  initMentionNotifications();
 
   const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
   let chatSocket;
